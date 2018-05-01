@@ -1,0 +1,66 @@
+---
+title: "Kaggle Titanic"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+
+```{r Read Dataset}
+TrainTitanic=read.csv("F:\\Kaggle\\Titanic\\train.csv", header=TRUE,na.strings=c(""," ","NA"))
+
+```
+
+```{r Structure of Data Set}
+str(TrainTitanic)
+```
+
+```{r Converting to factor}
+TrainTitanic$Survived=as.factor(TrainTitanic$Survived)
+TrainTitanic$Pclass =as.factor(TrainTitanic$Pclass)
+```
+
+```{r cheking summary }
+summary(TrainTitanic)
+```
+
+```{r cheking NA, include=FALSE}
+colSums(is.na(TrainTitanic))
+```
+```{r Imputing mean for age for approximation as of now}
+TrainTitanic$Age[is.na(TrainTitanic$Age)] = mean(TrainTitanic$Age, na.rm=TRUE)
+```
+
+```{r Fare plot with survival}
+ggplot(TrainTitanic, aes(x=Age,fill=factor(Survived))) + 
+  geom_histogram(breaks=seq(0,80,by=4),colour='black') + 
+  xlab("Age") + ylab("Passengers")
+```
+Younger passengers around 12 and older one seems to be rescued compare to rest of the passengers
+
+```{r Sex with survival}
+ggplot(TrainTitanic, aes(x = Survived, fill = Sex)) + geom_bar()
+```
+Females more likely to survive, women and children first it seems from both the plots above
+
+```{r Fare with survival}
+ggplot(TrainTitanic, aes(x=Fare,fill=factor(Survived))) + 
+  geom_histogram(breaks=seq(0,550,by=10),colour='black') + 
+  xlab("Fare") + ylab("Passengers")
+```
+Expensive ticket holder more likely to survive based on status,hence Class and fare should co-relate as per the last plot
+
+```{r class and Fare}
+Fare_mean_Pclass=aggregate(TrainTitanic$Fare, list(TrainTitanic$Pclass), mean)
+colnames(Fare_mean_Pclass) <- c("pclass", "mean")
+ggplot(Fare_mean_Pclass, aes(x = pclass, y=mean)) +geom_bar(stat="identity")
+```
+
+```{r age,fare and survival}
+plot(TrainTitanic$Age, TrainTitanic$Fare, pch = 9, col = c('red', 'green')[TrainTitanic$Survived])
+```
+Red zone shows age 18-50 and lower class(fare)
+
+```{r Embarked}
+ggplot(TrainTitanic, aes(x = Survived, fill = Embarked)) + geom_bar()
+```
+Most survivals are from S(Southampton)
