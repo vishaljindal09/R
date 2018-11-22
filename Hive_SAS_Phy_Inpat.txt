@@ -1,0 +1,146 @@
+create database optum;
+
+show databases;
+
+use optum;
+
+
+DROP TABLE IF EXISTS phycisian;
+
+CREATE EXTERNAL TABLE IF NOT EXISTS optum.phycisian(
+INDV_SYS_ID INT,
+MPIN INT,
+SRVC_MPIN INT,
+FST_SRVC_DT_SYS_ID INT,
+LST_SRVC_DT_SYS_ID INT,
+CLM_AUD_NBR FLOAT,
+ALLW_AMT FLOAT,
+DIAG_1_CD_SYS_ID INT,
+DIAG_2_CD_SYS_ID INT,
+DIAG_3_CD_SYS_ID INT,
+PROC_CD_SYS_ID INT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+LOCATION '/data/optum/';
+
+describe phycisian;
+
+select count(*) from phycisian;
+
+
+DROP TABLE IF EXISTS inpat;
+
+CREATE EXTERNAL TABLE IF NOT EXISTS optum.inpat(
+INDV_SYS_ID INT,
+MPIN INT,
+SRVC_MPIN INT,
+FST_SRVC_DT_SYS_ID INT,
+LST_SRVC_DT_SYS_ID INT,
+CLM_AUD_NBR FLOAT,
+ALLW_AMT FLOAT,
+DIAG_1_CD_SYS_ID INT,
+DIAG_2_CD_SYS_ID INT,
+DIAG_3_CD_SYS_ID INT,
+PROC_1_CD_SYS_ID INT,
+PROC_2_CD_SYS_ID INT,
+PROC_3_CD_SYS_ID INT,
+DSCHRG_STS_CATGY_TXT STRING,
+RVNU_CD INT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+LOCATION '/data/optum/inpat/';
+
+describe inpat;
+
+select count(*) from inpat;
+
+DROP TABLE IF EXISTS cardiophycisian;
+
+CREATE TABLE optum.cardiophycisian as select 
+p.INDV_SYS_ID,
+p.SRVC_MPIN,
+p.FST_SRVC_DT_SYS_ID,
+p.LST_SRVC_DT_SYS_ID,
+p.CLM_AUD_NBR,
+p.ALLW_AMT,
+p.DIAG_1_CD_SYS_ID,
+p.DIAG_2_CD_SYS_ID,
+p.DIAG_3_CD_SYS_ID,
+p.PROC_CD_SYS_ID from phycisian p where p.MPIN=p.SRVC_MPIN;
+
+describe cardiophycisian;
+
+select count(*) from cardiophycisian; -- 37269
+
+select count(distinct INDV_SYS_ID) from cardiophycisian; --7239
+
+
+
+
+
+CREATE TABLE optum.readmissions as select 
+p.INDV_SYS_ID,
+p.SRVC_MPIN as PH_MPIN,
+p.FST_SRVC_DT_SYS_ID as PH_FST_SRVC_DT_SYS_ID,
+p.LST_SRVC_DT_SYS_ID as PH_LST_SRVC_DT_SYS_ID,
+i.SRVC_MPIN as IP_MPIN,
+i.FST_SRVC_DT_SYS_ID as IP_FST_SRVC_DT_SYS_ID,
+i.LST_SRVC_DT_SYS_ID as IP_LST_SRVC_DT_SYS_ID,
+i.DSCHRG_STS_CATGY_TXT
+from cardiophycisian p
+LEFT OUTER JOIN inpat i
+ON (i.INDV_SYS_ID = p.INDV_SYS_ID)
+where p.FST_SRVC_DT_SYS_ID < i.FST_SRVC_DT_SYS_ID;
+
+
+describe readmissions;
+
+select count(*) from readmissions; --672809
+
+select count(distinct INDV_SYS_ID) from readmissions; --3778
+
+
+CREATE TABLE optum.readmissions_1 as select 
+p.INDV_SYS_ID,
+p.SRVC_MPIN as PH_MPIN,
+p.FST_SRVC_DT_SYS_ID as PH_FST_SRVC_DT_SYS_ID,
+p.LST_SRVC_DT_SYS_ID as PH_LST_SRVC_DT_SYS_ID,
+i.SRVC_MPIN as IP_MPIN,
+i.FST_SRVC_DT_SYS_ID as IP_FST_SRVC_DT_SYS_ID,
+i.LST_SRVC_DT_SYS_ID as IP_LST_SRVC_DT_SYS_ID,
+i.DSCHRG_STS_CATGY_TXT
+from cardiophycisian p
+LEFT OUTER JOIN inpat i
+ON (i.INDV_SYS_ID = p.INDV_SYS_ID AND p.FST_SRVC_DT_SYS_ID < i.FST_SRVC_DT_SYS_ID);
+
+
+describe readmissions_1;
+
+select count(*) from readmissions_1; -- 693000
+
+select count(distinct INDV_SYS_ID) from readmissions_1; --7239
+
+
+insert overwrite table readmissions_1 select distinct * from readmissions_1;
+
+select count(*) from readmissions_1; --50595
+
+select count(distinct INDV_SYS_ID) from readmissions_1;--7239
+
+
+CREATE TABLE optum.readmissions_2 as select * from readmissions_1 where (IP_FST_SRVC_DT_SYS_ID-PH_FST_SRVC_DT_SYS_ID) >0 and (IP_FST_SRVC_DT_SYS_ID-PH_FST_SRVC_DT_SYS_ID) <=90 and DSCHRG_STS_CATGY_TXT<>'TRANSFERRED';
+
+
+
+describe readmissions_2;
+
+select count(*) from readmissions_2; -- 17881
+
+select count(distinct INDV_SYS_ID) from readmissions_2; --3420
+
+
+select distinct (dschrg_sts_catgy_txt) from readmissions_2;-- DISCHARGED,EXPIRED,LEFT AGAINST ADVICE,STILL CONFINED
+
+
+
+
+
+
